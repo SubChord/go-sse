@@ -11,6 +11,8 @@ type Broker struct {
 
 	clients       map[string]*client
 	customHeaders map[string]string
+
+	disconnectCallback func(clientId string)
 }
 
 func NewBroker(customHeaders map[string]string) *Broker {
@@ -55,6 +57,11 @@ func (b *Broker) setHeaders(w http.ResponseWriter) {
 	}
 }
 
+func (b *Broker) IsClientPresent(clientId string) bool {
+	_, ok := b.clients[clientId]
+	return ok
+}
+
 func (b *Broker) AddClient(clientId string, client *client) {
 	b.mtx.Lock()
 	b.clients[clientId] = client
@@ -64,6 +71,9 @@ func (b *Broker) AddClient(clientId string, client *client) {
 func (b *Broker) RemoveClient(clientId string) {
 	b.mtx.Lock()
 	delete(b.clients, clientId)
+	if b.disconnectCallback != nil {
+		b.disconnectCallback(clientId)
+	}
 	b.mtx.Unlock()
 }
 
@@ -84,4 +94,8 @@ func (b *Broker) Send(clientId string, event Event) error {
 	}
 	c.Send(event)
 	return nil
+}
+
+func (b *Broker) SetDisconnectCallback(cb func(clientId string)) {
+	b.disconnectCallback = cb
 }
