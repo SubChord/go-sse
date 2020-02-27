@@ -72,7 +72,7 @@ func (b *Broker) RemoveClient(clientId string) {
 	b.mtx.Lock()
 	delete(b.clients, clientId)
 	if b.disconnectCallback != nil {
-		b.disconnectCallback(clientId)
+		go b.disconnectCallback(clientId)
 	}
 	b.mtx.Unlock()
 }
