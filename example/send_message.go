@@ -1,7 +1,7 @@
 package main
 
 import (
-	"bitbucket.org/be-mobile/fleet-notification-api/net"
+	"github.com/subchord/go-sse"
 	"fmt"
 	"log"
 	"net/http"
