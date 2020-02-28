@@ -58,31 +58,33 @@ func (b *Broker) setHeaders(w http.ResponseWriter) {
 }
 
 func (b *Broker) IsClientPresent(clientId string) bool {
+	b.mtx.Lock()
+	defer b.mtx.Unlock()
 	_, ok := b.clients[clientId]
 	return ok
 }
 
 func (b *Broker) AddClient(clientId string, client *client) {
 	b.mtx.Lock()
+	defer b.mtx.Unlock()
 	b.clients[clientId] = client
-	b.mtx.Unlock()
 }
 
 func (b *Broker) RemoveClient(clientId string) {
 	b.mtx.Lock()
+	defer b.mtx.Unlock()
 	delete(b.clients, clientId)
 	if b.disconnectCallback != nil {
 		go b.disconnectCallback(clientId)
 	}
-	b.mtx.Unlock()
 }
 
 func (b *Broker) Broadcast(event Event) {
 	b.mtx.Lock()
+	defer b.mtx.Unlock()
 	for _, c := range b.clients {
 		c.Send(event)
 	}
-	b.mtx.Unlock()
 }
 
 func (b *Broker) Send(clientId string, event Event) error {
