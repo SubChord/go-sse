@@ -4,28 +4,37 @@ import (
 	"net/http"
 )
 
-type client struct {
-	id   string
-	conn http.ResponseWriter
-	msg  chan []byte
+type Client struct {
+	id             string
+	responseWriter http.ResponseWriter
+	request        *http.Request
+	msg            chan []byte
 }
 
-func (c *client) Send(event Event) {
+func (c *Client) Id() string {
+	return c.id
+}
+
+func (c *Client) Send(event Event) {
 	c.msg <- event.Prepare()
 }
 
-func (c *client) Serve(writeCallback func()) {
+func (c *Client) serve(onWrite func(), onClose func()) {
+writeLoop:
 	for {
 		select {
+		case <-c.request.Context().Done():
+			break writeLoop
 		case msg, open := <-c.msg:
 			if !open {
-				return
+				break writeLoop
 			}
-			_, err := c.conn.Write(msg)
+			_, err := c.responseWriter.Write(msg)
 			if err != nil {
 				return
 			}
-			writeCallback()
+			onWrite()
 		}
 	}
+	onClose()
 }

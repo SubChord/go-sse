@@ -9,7 +9,7 @@ import (
 type Broker struct {
 	mtx sync.Mutex
 
-	clients       map[string]*client
+	clients       map[string]*Client
 	customHeaders map[string]string
 
 	disconnectCallback func(clientId string)
@@ -17,33 +17,37 @@ type Broker struct {
 
 func NewBroker(customHeaders map[string]string) *Broker {
 	return &Broker{
-		clients:       make(map[string]*client),
+		clients:       make(map[string]*Client),
 		customHeaders: customHeaders,
 	}
 }
 
-func (b *Broker) Connect(clientId string, w http.ResponseWriter, r *http.Request) error {
+func (b *Broker) Connect(clientId string, w http.ResponseWriter, r *http.Request) (*Client, error) {
 	flusher, ok := w.(http.Flusher)
 	if !ok {
 		http.Error(w, "Streaming unsupported!", http.StatusInternalServerError)
-		return errors.New("streaming unsupported")
+		return nil, errors.New("streaming unsupported")
 	}
 
-	client := &client{
-		id:   clientId,
-		conn: w,
-		msg:  make(chan []byte),
+	client := &Client{
+		id:             clientId,
+		responseWriter: w,
+		request:        r,
+		msg:            make(chan []byte),
 	}
 
 	b.setHeaders(w)
 
 	b.AddClient(clientId, client)
-	client.Serve(func() {
-		flusher.Flush() // write callback
-	})
-	b.RemoveClient(clientId)
+	go client.serve(
+		func() {
+			flusher.Flush() // onWrite callback
+		},
+		func() {
+			b.RemoveClient(clientId) //onClose callback
+		})
 
-	return nil
+	return client, nil
 }
 
 func (b *Broker) setHeaders(w http.ResponseWriter) {
@@ -64,7 +68,7 @@ func (b *Broker) IsClientPresent(clientId string) bool {
 	return ok
 }
 
-func (b *Broker) AddClient(clientId string, client *client) {
+func (b *Broker) AddClient(clientId string, client *Client) {
 	b.mtx.Lock()
 	defer b.mtx.Unlock()
 	b.clients[clientId] = client

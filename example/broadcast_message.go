@@ -1,3 +1,5 @@
+// +build example1
+
 package main
 
 import (
@@ -8,6 +10,10 @@ import (
 	"strconv"
 	"time"
 )
+
+type API struct {
+	broker *net.Broker
+}
 
 func main() {
 	sseClientBroker := net.NewBroker(map[string]string{
@@ -28,7 +34,7 @@ func main() {
 				count++
 				api.broker.Broadcast(net.StringEvent{
 					Id:    fmt.Sprintf("event-id-%v", count),
-					Event: "broadcast_event",
+					Event: "message",
 					Data:  strconv.Itoa(count),
 				})
 			}
@@ -38,12 +44,8 @@ func main() {
 	log.Fatal(http.ListenAndServe(":8080", http.DefaultServeMux))
 }
 
-type API struct {
-	broker *net.Broker
-}
-
 func (api *API) sseHandler(writer http.ResponseWriter, request *http.Request) {
-	err := api.broker.Connect("c2c6a238-ec23-4700-9fe6-2bcdb393af7b", writer, request)
+	_, err := api.broker.Connect("c2c6a238-ec23-4700-9fe6-2bcdb393af7b", writer, request)
 	if err != nil {
 		log.Println(err)
 		return

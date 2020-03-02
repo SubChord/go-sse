@@ -1,0 +1,23 @@
+<html>
+<head>
+    <title>SSE Example</title>
+    <script>
+        window.onload = () => {
+            var messageContainer = document.getElementById("messages");
+            var sseSource = new EventSource("http://localhost:8080/sse");
+            sseSource.addEventListener("message", ev => {
+                console.log(ev)
+                var p = document.createElement("p");
+                p.innerHTML += "Event: " + ev.type + "</br>"
+                p.innerHTML += "Id: " + ev.lastEventId + "</br>"
+                p.innerHTML += "Data: " + ev.data + "</br>"
+                messageContainer.appendChild(p)
+            })
+        };
+
+    </script>
+</head>
+<body>
+<div id="messages"></div>
+</body>
+</html>
