@@ -17,9 +17,11 @@ type API struct {
 
 func main() {
 	rand.Seed(time.Now().Unix())
+
 	sseClientBroker := net.NewBroker(map[string]string{
 		"Access-Control-Allow-Origin": "*",
 	})
+
 	sseClientBroker.SetDisconnectCallback(func(clientId string) {
 		log.Printf("client %v has disconnected.", clientId)
 	})
