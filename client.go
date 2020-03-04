@@ -2,7 +2,6 @@ package net
 
 import (
 	"errors"
-	"fmt"
 	"github.com/google/uuid"
 	"net/http"
 	"time"
@@ -68,7 +67,6 @@ writeLoop:
 			}
 			_, err := c.responseWriter.Write(msg)
 			if err != nil {
-				fmt.Println(err)
 				break writeLoop
 			}
 			c.flusher.Flush()
