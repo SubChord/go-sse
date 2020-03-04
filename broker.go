@@ -23,29 +23,21 @@ func NewBroker(customHeaders map[string]string) *Broker {
 }
 
 func (b *Broker) Connect(clientId string, w http.ResponseWriter, r *http.Request) (*Client, error) {
-	flusher, ok := w.(http.Flusher)
-	if !ok {
+	client, err := NewClient(clientId, w, r)
+	if err != nil {
 		http.Error(w, "Streaming unsupported!", http.StatusInternalServerError)
 		return nil, errors.New("streaming unsupported")
-	}
-
-	client := &Client{
-		id:             clientId,
-		responseWriter: w,
-		request:        r,
-		msg:            make(chan []byte),
 	}
 
 	b.setHeaders(w)
 
 	b.AddClient(clientId, client)
+
 	go client.serve(
 		func() {
-			flusher.Flush() // onWrite callback
-		},
-		func() {
 			b.RemoveClient(clientId) //onClose callback
-		})
+		},
+	)
 
 	return client, nil
 }

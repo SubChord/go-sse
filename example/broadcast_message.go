@@ -3,8 +3,8 @@
 package main
 
 import (
-	"github.com/subchord/go-sse"
 	"fmt"
+	"github.com/subchord/go-sse"
 	"log"
 	"net/http"
 	"strconv"
@@ -45,9 +45,11 @@ func main() {
 }
 
 func (api *API) sseHandler(writer http.ResponseWriter, request *http.Request) {
-	_, err := api.broker.Connect("c2c6a238-ec23-4700-9fe6-2bcdb393af7b", writer, request)
+	client, err := api.broker.Connect(fmt.Sprintf("%v", time.Now().Unix()), writer, request)
 	if err != nil {
 		log.Println(err)
 		return
 	}
+	<-client.Done()
+	log.Printf("connection with client %v closed", client.Id())
 }

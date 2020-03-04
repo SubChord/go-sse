@@ -40,19 +40,26 @@ func (api *API) sseHandler(writer http.ResponseWriter, request *http.Request) {
 		return
 	}
 
-	ticker := time.Tick(1 * time.Second)
-	count := 0
-	for {
-		select {
-		case <-request.Context().Done():
-			return
-		case <-ticker:
-			client.Send(net.StringEvent{
-				Id:    fmt.Sprintf("%v", count),
-				Event: "message",
-				Data:  fmt.Sprintf("%v", count),
-			})
-			count++
+	stop := make(chan interface{}, 1)
+
+	go func() {
+		ticker := time.Tick(1 * time.Second)
+		count := 0
+		for {
+			select {
+			case <-stop:
+				return
+			case <-ticker:
+				client.Send(net.StringEvent{
+					Id:    fmt.Sprintf("%v", count),
+					Event: "message",
+					Data:  fmt.Sprintf("%v", count),
+				})
+				count++
+			}
 		}
-	}
+	}()
+
+	<- client.Done()
+	stop <- true
 }
