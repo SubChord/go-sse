@@ -2,11 +2,14 @@ package net
 
 import (
 	"errors"
+	"github.com/google/uuid"
 	"net/http"
 )
 
 type Client struct {
-	id             string
+	id        string
+	sessionId string
+
 	responseWriter http.ResponseWriter
 	request        *http.Request
 	flusher        http.Flusher
@@ -25,6 +28,7 @@ func NewClient(id string, w http.ResponseWriter, r *http.Request) (*Client, erro
 
 	return &Client{
 		id:             id,
+		sessionId:      uuid.New().String(),
 		responseWriter: w,
 		request:        r,
 		flusher:        flusher,
@@ -35,6 +39,10 @@ func NewClient(id string, w http.ResponseWriter, r *http.Request) (*Client, erro
 
 func (c *Client) Id() string {
 	return c.id
+}
+
+func (c *Client) SessionId() string {
+	return c.sessionId
 }
 
 func (c *Client) Send(event Event) {

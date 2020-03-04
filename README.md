@@ -5,47 +5,52 @@ Basic implementation of SSE in golang.
 
 ## Example usage
 ```Go
-type API struct {
-	broker *net.Broker
-}
-
 func main() {
+	rand.Seed(time.Now().Unix())
+
 	sseClientBroker := net.NewBroker(map[string]string{
 		"Access-Control-Allow-Origin": "*",
+	})
+
+	sseClientBroker.SetDisconnectCallback(func(clientId string, sessionId string) {
+		log.Printf("session %v of client %v was disconnected.", sessionId, clientId)
 	})
 
 	api := &API{broker: sseClientBroker}
 
 	http.HandleFunc("/sse", api.sseHandler)
 
-	// Broadcast message to all clients every 5 seconds
-	go func() {
-		count := 0
-		tick := time.Tick(5 * time.Second)
-		for {
-			select {
-			case <-tick:
-				count++
-				api.broker.Broadcast(net.StringEvent{
-					Id:    fmt.Sprintf("event-id-%v", count),
-					Event: "message",
-					Data:  strconv.Itoa(count),
-				})
-			}
-		}
-	}()
-
 	log.Fatal(http.ListenAndServe(":8080", http.DefaultServeMux))
 }
 
 func (api *API) sseHandler(writer http.ResponseWriter, request *http.Request) {
-	client, err := api.broker.Connect(fmt.Sprintf("%v", time.Now().Unix()), writer, request)
+	client, err := api.broker.Connect(fmt.Sprintf("%v", rand.Int63()), writer, request)
 	if err != nil {
 		log.Println(err)
 		return
 	}
-	<-client.Done()
-	log.Printf("connection with client %v closed", client.Id())
-}
 
+	stop := make(chan interface{}, 1)
+
+	go func() {
+		ticker := time.Tick(1 * time.Second)
+		count := 0
+		for {
+			select {
+			case <-stop:
+				return
+			case <-ticker:
+				client.Send(net.StringEvent{
+					Id:    fmt.Sprintf("%v", count),
+					Event: "message",
+					Data:  fmt.Sprintf("%v", count),
+				})
+				count++
+			}
+		}
+	}()
+
+	<-client.Done()
+	stop <- true
+}
 ```
