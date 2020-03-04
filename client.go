@@ -15,6 +15,7 @@ type Client struct {
 	doneChan chan interface{}
 }
 
+// Users should not create instances of client. This should be handled by the SSE broker.
 func NewClient(id string, w http.ResponseWriter, r *http.Request) (*Client, error) {
 	flusher, ok := w.(http.Flusher)
 	if !ok {
