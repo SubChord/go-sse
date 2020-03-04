@@ -2,8 +2,10 @@ package net
 
 import (
 	"errors"
+	"fmt"
 	"github.com/google/uuid"
 	"net/http"
+	"time"
 )
 
 type Client struct {
@@ -46,27 +48,34 @@ func (c *Client) SessionId() string {
 }
 
 func (c *Client) Send(event Event) {
-	c.msg <- event.Prepare()
+	bytes := event.Prepare()
+	c.msg <- bytes
 }
 
 func (c *Client) serve(onClose func()) {
+	heartBeat := time.NewTicker(15 * time.Second)
+
 writeLoop:
 	for {
 		select {
 		case <-c.request.Context().Done():
 			break writeLoop
+		case <-heartBeat.C:
+			go c.Send(HeartbeatEvent{})
 		case msg, open := <-c.msg:
 			if !open {
 				break writeLoop
 			}
 			_, err := c.responseWriter.Write(msg)
 			if err != nil {
-				return
+				fmt.Println(err)
+				break writeLoop
 			}
 			c.flusher.Flush()
 		}
 	}
 
+	heartBeat.Stop()
 	c.doneChan <- true
 	onClose()
 }

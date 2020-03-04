@@ -33,3 +33,12 @@ func (m StringEvent) Prepare() []byte {
 	data.WriteString("\n")
 	return data.Bytes()
 }
+
+type HeartbeatEvent struct {}
+
+func (m HeartbeatEvent) Prepare() []byte {
+	var data bytes.Buffer
+	data.WriteString(fmt.Sprint(": heartbeat\n"))
+	data.WriteString("\n")
+	return data.Bytes()
+}
