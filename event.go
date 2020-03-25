@@ -18,23 +18,24 @@ type StringEvent struct {
 
 func (m StringEvent) Prepare() []byte {
 	var data bytes.Buffer
+
 	if len(m.Id) > 0 {
 		data.WriteString(fmt.Sprintf("id: %s\n", strings.Replace(m.Id, "\n", "", -1)))
 	}
-	if len(m.Event) > 0 {
-		data.WriteString(fmt.Sprintf("event: %s\n", strings.Replace(m.Event, "\n", "", -1)))
+
+	data.WriteString(fmt.Sprintf("event: %s\n", strings.Replace(m.Event, "\n", "", -1)))
+
+	// data field should not be empty
+	lines := strings.Split(m.Data, "\n")
+	for _, line := range lines {
+		data.WriteString(fmt.Sprintf("data: %s\n", line))
 	}
-	if len(m.Data) > 0 {
-		lines := strings.Split(m.Data, "\n")
-		for _, line := range lines {
-			data.WriteString(fmt.Sprintf("data: %s\n", line))
-		}
-	}
+
 	data.WriteString("\n")
 	return data.Bytes()
 }
 
-type HeartbeatEvent struct {}
+type HeartbeatEvent struct{}
 
 func (m HeartbeatEvent) Prepare() []byte {
 	var data bytes.Buffer
