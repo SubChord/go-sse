@@ -15,4 +15,3 @@ fabric.properties
 *.dylib
 *.test
 *.out
-go.sum

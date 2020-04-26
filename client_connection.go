@@ -7,7 +7,7 @@ import (
 	"time"
 )
 
-type Client struct {
+type ClientConnection struct {
 	id        string
 	sessionId string
 
@@ -20,14 +20,14 @@ type Client struct {
 }
 
 // Users should not create instances of client. This should be handled by the SSE broker.
-func NewClient(id string, w http.ResponseWriter, r *http.Request) (*Client, error) {
+func newClientConnection(id string, w http.ResponseWriter, r *http.Request) (*ClientConnection, error) {
 	flusher, ok := w.(http.Flusher)
 	if !ok {
 		http.Error(w, "Streaming unsupported!", http.StatusInternalServerError)
 		return nil, errors.New("streaming unsupported")
 	}
 
-	return &Client{
+	return &ClientConnection{
 		id:             id,
 		sessionId:      uuid.New().String(),
 		responseWriter: w,
@@ -38,20 +38,20 @@ func NewClient(id string, w http.ResponseWriter, r *http.Request) (*Client, erro
 	}, nil
 }
 
-func (c *Client) Id() string {
+func (c *ClientConnection) Id() string {
 	return c.id
 }
 
-func (c *Client) SessionId() string {
+func (c *ClientConnection) SessionId() string {
 	return c.sessionId
 }
 
-func (c *Client) Send(event Event) {
+func (c *ClientConnection) Send(event Event) {
 	bytes := event.Prepare()
 	c.msg <- bytes
 }
 
-func (c *Client) serve(onClose func()) {
+func (c *ClientConnection) serve(onClose func()) {
 	heartBeat := time.NewTicker(15 * time.Second)
 
 writeLoop:
@@ -78,6 +78,6 @@ writeLoop:
 	onClose()
 }
 
-func (c *Client) Done() <-chan interface{} {
+func (c *ClientConnection) Done() <-chan interface{} {
 	return c.doneChan
 }

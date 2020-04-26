@@ -9,7 +9,7 @@ import (
 type Broker struct {
 	mtx sync.Mutex
 
-	clientSessions map[string]map[string]*Client
+	clientSessions map[string]map[string]*ClientConnection
 	customHeaders  map[string]string
 
 	disconnectCallback func(clientId string, sessionId string)
@@ -17,13 +17,13 @@ type Broker struct {
 
 func NewBroker(customHeaders map[string]string) *Broker {
 	return &Broker{
-		clientSessions: make(map[string]map[string]*Client),
+		clientSessions: make(map[string]map[string]*ClientConnection),
 		customHeaders:  customHeaders,
 	}
 }
 
-func (b *Broker) Connect(clientId string, w http.ResponseWriter, r *http.Request) (*Client, error) {
-	client, err := NewClient(clientId, w, r)
+func (b *Broker) Connect(clientId string, w http.ResponseWriter, r *http.Request) (*ClientConnection, error) {
+	client, err := newClientConnection(clientId, w, r)
 	if err != nil {
 		http.Error(w, "Streaming unsupported!", http.StatusInternalServerError)
 		return nil, errors.New("streaming unsupported")
@@ -60,13 +60,13 @@ func (b *Broker) IsClientPresent(clientId string) bool {
 	return ok
 }
 
-func (b *Broker) addClient(clientId string, client *Client) {
+func (b *Broker) addClient(clientId string, client *ClientConnection) {
 	b.mtx.Lock()
 	defer b.mtx.Unlock()
 
 	_, ok := b.clientSessions[clientId]
 	if !ok {
-		b.clientSessions[clientId] = make(map[string]*Client)
+		b.clientSessions[clientId] = make(map[string]*ClientConnection)
 	}
 
 	b.clientSessions[clientId][client.sessionId] = client
