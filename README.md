@@ -5,6 +5,8 @@ Basic implementation of SSE in golang.
 This repository includes a plug and play server-side imlementation and a client-side implementation.
 The server-side implementation has been battle-tested while the client-side is usable but in ongoing development.
 
+Code examples can be found in the `example` folder.
+
 # Server side SSE
 1. Create a new broker and pass `optional` headers that should be sent to the client.
 ```Go
@@ -39,4 +41,40 @@ evt := net.StringEvent{
 api.broker.Broadcast(evt) // all active clients receive this event
 api.broker.Send("unique_client_reference", evt) // only the specified client receives this event
 &ClientConnection{}.Send(evt) // this instance should be created by the broker only!
+```
+
+# Client side SSE
+The SSE client makes extensive use of go channels. Once a connection with an SSE feed is established you can subscribe to multiple types of events and process them by looping over the subscription's feed (channel).
+
+1. Connect with SSE feed.
+```Go
+feed, err := net.ConnectWithSSEFeed("http://localhost:8080/sse", nil)
+if err != nil {
+	log.Fatal(err)
+	return
+}
+```
+2. Subscribe to a specific type of event.
+```Go
+sub, err := feed.Subscribe("message")
+if err != nil {
+	return
+}
+```
+3. Process the events
+```Go
+for {
+	select {
+	case evt := <-sub.Feed():
+		log.Print(evt)
+	case err := <-sub.ErrFeed():
+		log.Fatal(err)
+		return
+	}
+}
+```
+4. When you are done with all subscriptions and the SSE feed. Don't forget to close the subscriptions and the feed in order to prevent unnecessary network traffic and memory leaks.
+```Go
+sub.Close()
+feed.Close()
 ```
