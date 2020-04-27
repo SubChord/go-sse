@@ -6,7 +6,10 @@ This repository includes a plug and play server-side imlementation and a client-
 The server-side implementation has been battle-tested while the client-side is usable but in ongoing development.
 
 Code examples can be found in the `example` folder.
-
+# Install
+```bash
+go get github.com/SubChord/go-sse@v1.0.0
+```
 # Server side SSE
 1. Create a new broker and pass `optional` headers that should be sent to the client.
 ```Go
