@@ -13,12 +13,21 @@ func main() {
 		return
 	}
 
-	subscribe, err := feed.Subscribe("message")
+	sub, err := feed.Subscribe("message")
 	if err != nil {
 		return
 	}
 
-	for event := range subscribe.Feed() {
-		log.Printf("%v", event)
+	for {
+		select {
+		case evt := <-sub.Feed():
+			log.Print(evt)
+		case err := <-sub.ErrFeed():
+			log.Fatal(err)
+			return
+		}
 	}
+
+	sub.Close()
+	feed.Close()
 }

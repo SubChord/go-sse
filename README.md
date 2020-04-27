@@ -46,9 +46,10 @@ api.broker.Send("unique_client_reference", evt) // only the specified client rec
 # Client side SSE
 The SSE client makes extensive use of go channels. Once a connection with an SSE feed is established you can subscribe to multiple types of events and process them by looping over the subscription's feed (channel).
 
-1. Connect with SSE feed.
+1. Connect with SSE feed. And pass `optional` headers.
 ```Go
-feed, err := net.ConnectWithSSEFeed("http://localhost:8080/sse", nil)
+headers := make(map[string][]string)
+feed, err := net.ConnectWithSSEFeed("http://localhost:8080/sse", headers)
 if err != nil {
 	log.Fatal(err)
 	return
