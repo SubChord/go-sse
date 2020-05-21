@@ -144,12 +144,12 @@ func (s *SSEFeed) processRaw(b []byte) {
 		}
 		s.unfinishedEvent = nil
 		s.subscriptionsMtx.Lock()
-		s.subscriptionsMtx.Unlock()
 		for _, subscription := range s.subscriptions {
 			if subscription.eventType == evt.Event {
 				subscription.feed <- evt
 			}
 		}
+		s.subscriptionsMtx.Unlock()
 	}
 
 	payload := strings.TrimRight(string(b), "\n")
