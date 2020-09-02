@@ -124,8 +124,11 @@ func (b *Broker) Close() error {
 	for _, v := range b.clientSessions {
 		for _, session := range v {
 			//Let's mark everything as completed
-			session.doneChan <- session
+			session.doneChan <- true
 		}
 	}
+
+	//Empty out client sessions
+	b.clientSessions = map[string]map[string]*ClientConnection{}
 	return nil
 }
