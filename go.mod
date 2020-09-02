@@ -1,4 +1,4 @@
-module github.com/subchord/go-sse
+module github.com/shairozan/go-sse
 
 go 1.13
 
