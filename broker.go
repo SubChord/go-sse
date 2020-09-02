@@ -118,3 +118,14 @@ func (b *Broker) Send(clientId string, event Event) error {
 func (b *Broker) SetDisconnectCallback(cb func(clientId string, sessionId string)) {
 	b.disconnectCallback = cb
 }
+
+//Close is used for cleanup operations in which we need to terminate a broker and close all client connections
+func (b *Broker) Close() error {
+	for _, v := range b.clientSessions {
+		for _, session := range v {
+			//Let's mark everything as completed
+			session.doneChan <- session
+		}
+	}
+	return nil
+}
