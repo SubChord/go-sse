@@ -119,19 +119,19 @@ func (b *Broker) SetDisconnectCallback(cb func(clientId string, sessionId string
 	b.disconnectCallback = cb
 }
 
-//Close is used for cleanup operations in which we need to terminate a broker and close all client connections.
-//this allows a subscription manager to handle the brokers without leaving orphaned references lying around.
 func (b *Broker) Close() error {
 	b.mtx.Lock()
+	defer b.mtx.Unlock()
+
 	for _, v := range b.clientSessions {
+		// Mark all client sessions as done
 		for _, session := range v {
-			//Let's mark everything as completed
 			session.doneChan <- true
 		}
 	}
 
-	//Empty out client sessions
+	// Clear client sessions
 	b.clientSessions = map[string]map[string]*ClientConnection{}
-	b.mtx.Unlock()
+  
 	return nil
 }
