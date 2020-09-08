@@ -118,3 +118,19 @@ func (b *Broker) Send(clientId string, event Event) error {
 func (b *Broker) SetDisconnectCallback(cb func(clientId string, sessionId string)) {
 	b.disconnectCallback = cb
 }
+
+func (b *Broker) Close() error {
+	b.mtx.Lock()
+	defer b.mtx.Unlock()
+
+	for _, v := range b.clientSessions {
+		// Mark all client sessions as done
+		for _, session := range v {
+			session.doneChan <- true
+		}
+	}
+
+	// Clear client sessions
+	b.clientSessions = map[string]map[string]*ClientConnection{}
+	return nil
+}
