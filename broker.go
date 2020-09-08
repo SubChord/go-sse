@@ -132,5 +132,6 @@ func (b *Broker) Close() error {
 
 	// Clear client sessions
 	b.clientSessions = map[string]map[string]*ClientConnection{}
+  
 	return nil
 }
