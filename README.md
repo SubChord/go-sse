@@ -43,7 +43,7 @@ evt := net.StringEvent{
 }
 api.broker.Broadcast(evt) // all active clients receive this event
 api.broker.Send("unique_client_reference", evt) // only the specified client receives this event
-&ClientConnection{}.Send(evt) // this instance should be created by the broker only!
+&ClientConnection{}.Send(evt) // Send evt through ClientConnection instance. This instance should always be received by the broker.Connect(...) call.
 ```
 
 # Client side SSE
