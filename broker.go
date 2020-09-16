@@ -1,7 +1,6 @@
 package net
 
 import (
-	"errors"
 	"net/http"
 	"sync"
 )
@@ -26,7 +25,9 @@ func (b *Broker) Connect(clientId string, w http.ResponseWriter, r *http.Request
 	client, err := newClientConnection(clientId, w, r)
 	if err != nil {
 		http.Error(w, "Streaming unsupported!", http.StatusInternalServerError)
-		return nil, errors.New("streaming unsupported")
+		streamingUnsupportedError := StreamingUnsupportedError
+		streamingUnsupportedError.Detail = err
+		return nil, streamingUnsupportedError
 	}
 
 	b.setHeaders(w)
@@ -107,7 +108,9 @@ func (b *Broker) Send(clientId string, event Event) error {
 	defer b.mtx.Unlock()
 	sessions, ok := b.clientSessions[clientId]
 	if !ok {
-		return errors.New("unknown client")
+		unknownClientError := UnknownClientError
+		unknownClientError.Detail = clientId
+		return unknownClientError
 	}
 	for _, c := range sessions {
 		c.Send(event)

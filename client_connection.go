@@ -1,7 +1,6 @@
 package net
 
 import (
-	"errors"
 	"github.com/google/uuid"
 	"net/http"
 	"time"
@@ -24,7 +23,9 @@ func newClientConnection(id string, w http.ResponseWriter, r *http.Request) (*Cl
 	flusher, ok := w.(http.Flusher)
 	if !ok {
 		http.Error(w, "Streaming unsupported!", http.StatusInternalServerError)
-		return nil, errors.New("streaming unsupported")
+		streamingUnsupportedError := StreamingUnsupportedError
+		streamingUnsupportedError.Detail = "ResponseWriter(wrapper) does not support http.Flusher"
+		return nil, streamingUnsupportedError
 	}
 
 	return &ClientConnection{
