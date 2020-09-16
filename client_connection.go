@@ -51,8 +51,8 @@ func (c *ClientConnection) Send(event Event) {
 	c.msg <- bytes
 }
 
-func (c *ClientConnection) serve(onClose func()) {
-	heartBeat := time.NewTicker(15 * time.Second)
+func (c *ClientConnection) serve(interval time.Duration, onClose func()) {
+	heartBeat := time.NewTicker(interval)
 
 writeLoop:
 	for {
