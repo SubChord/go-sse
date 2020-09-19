@@ -132,8 +132,11 @@ func (s *SSEFeed) closeSubscription(id string) bool {
 }
 
 func (s *SSEFeed) processRaw(b []byte) {
-	// previous event is complete
 	if len(b) == 1 && b[0] == '\n' {
+		s.subscriptionsMtx.Lock()
+		defer s.subscriptionsMtx.Unlock()
+
+		// previous event is complete
 		if s.unfinishedEvent == nil {
 			return
 		}
@@ -143,13 +146,11 @@ func (s *SSEFeed) processRaw(b []byte) {
 			Data:  s.unfinishedEvent.Data,
 		}
 		s.unfinishedEvent = nil
-		s.subscriptionsMtx.Lock()
 		for _, subscription := range s.subscriptions {
 			if subscription.eventType == evt.Event {
 				subscription.feed <- evt
 			}
 		}
-		s.subscriptionsMtx.Unlock()
 	}
 
 	payload := strings.TrimRight(string(b), "\n")

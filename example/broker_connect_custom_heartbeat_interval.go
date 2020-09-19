@@ -1,3 +1,5 @@
+// +build connect_custom_interval
+
 package main
 
 import (
