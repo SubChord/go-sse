@@ -3,6 +3,7 @@ package net
 import (
 	"net/http"
 	"sync"
+	"time"
 )
 
 type Broker struct {
@@ -22,6 +23,10 @@ func NewBroker(customHeaders map[string]string) *Broker {
 }
 
 func (b *Broker) Connect(clientId string, w http.ResponseWriter, r *http.Request) (*ClientConnection, error) {
+	return b.ConnectWithHeartBeatInterval(clientId, w, r, 15*time.Second)
+}
+
+func (b *Broker) ConnectWithHeartBeatInterval(clientId string, w http.ResponseWriter, r *http.Request, interval time.Duration) (*ClientConnection, error) {
 	client, err := newClientConnection(clientId, w, r)
 	if err != nil {
 		http.Error(w, "Streaming unsupported!", http.StatusInternalServerError)
@@ -35,6 +40,7 @@ func (b *Broker) Connect(clientId string, w http.ResponseWriter, r *http.Request
 	b.addClient(clientId, client)
 
 	go client.serve(
+		interval,
 		func() {
 			b.removeClient(clientId, client.sessionId) //onClose callback
 		},
@@ -120,4 +126,21 @@ func (b *Broker) Send(clientId string, event Event) error {
 
 func (b *Broker) SetDisconnectCallback(cb func(clientId string, sessionId string)) {
 	b.disconnectCallback = cb
+}
+
+func (b *Broker) Close() error {
+	b.mtx.Lock()
+	defer b.mtx.Unlock()
+
+	for _, v := range b.clientSessions {
+		// Mark all client sessions as done
+		for _, session := range v {
+			session.doneChan <- true
+		}
+	}
+
+	// Clear client sessions
+	b.clientSessions = map[string]map[string]*ClientConnection{}
+
+	return nil
 }

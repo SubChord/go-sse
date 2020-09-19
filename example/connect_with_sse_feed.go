@@ -1,3 +1,5 @@
+// +build connect_with_sse
+
 package main
 
 import (
