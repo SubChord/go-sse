@@ -30,9 +30,7 @@ func (b *Broker) ConnectWithHeartBeatInterval(clientId string, w http.ResponseWr
 	client, err := newClientConnection(clientId, w, r)
 	if err != nil {
 		http.Error(w, "Streaming unsupported!", http.StatusInternalServerError)
-		streamingUnsupportedError := StreamingUnsupportedError
-		streamingUnsupportedError.Detail = err
-		return nil, streamingUnsupportedError
+		return nil, NewStreamingUnsupportedError(err.Error())
 	}
 
 	b.setHeaders(w)
@@ -114,9 +112,7 @@ func (b *Broker) Send(clientId string, event Event) error {
 	defer b.mtx.Unlock()
 	sessions, ok := b.clientSessions[clientId]
 	if !ok {
-		unknownClientError := UnknownClientError
-		unknownClientError.Detail = clientId
-		return unknownClientError
+		return NewUnknownClientError(clientId)
 	}
 	for _, c := range sessions {
 		c.Send(event)

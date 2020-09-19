@@ -23,9 +23,7 @@ func newClientConnection(id string, w http.ResponseWriter, r *http.Request) (*Cl
 	flusher, ok := w.(http.Flusher)
 	if !ok {
 		http.Error(w, "Streaming unsupported!", http.StatusInternalServerError)
-		streamingUnsupportedError := StreamingUnsupportedError
-		streamingUnsupportedError.Detail = "ResponseWriter(wrapper) does not support http.Flusher"
-		return nil, streamingUnsupportedError
+		return nil, NewStreamingUnsupportedError("ResponseWriter(wrapper) does not support http.Flusher")
 	}
 
 	return &ClientConnection{
