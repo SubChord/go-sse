@@ -6,6 +6,8 @@ import (
 	"time"
 )
 
+type ClientMetadata map[string]interface{}
+
 type ClientConnection struct {
 	id        string
 	sessionId string
