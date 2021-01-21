@@ -69,11 +69,11 @@ func (b *Broker) IsClientPresent(clientId string) bool {
 }
 
 func (b *Broker) SetClientMetadata(clientId string, metadata map[string]interface{}) error {
-	b.mdMtx.Lock()
-	defer b.mdMtx.Unlock()
-
 	b.sessionMtx.Lock()
 	defer b.sessionMtx.Unlock()
+
+	b.mdMtx.Lock()
+	defer b.mdMtx.Unlock()
 
 	_, ok := b.clientSessions[clientId]
 	if !ok {
@@ -86,11 +86,11 @@ func (b *Broker) SetClientMetadata(clientId string, metadata map[string]interfac
 }
 
 func (b *Broker) GetClientMetadata(clientId string) (map[string]interface{}, error) {
-	b.mdMtx.Lock()
-	defer b.mdMtx.Unlock()
-
 	b.sessionMtx.Lock()
 	defer b.sessionMtx.Unlock()
+
+	b.mdMtx.Lock()
+	defer b.mdMtx.Unlock()
 
 	_, ok := b.clientSessions[clientId]
 	md, ok2 := b.clientMetadata[clientId]
@@ -117,8 +117,8 @@ func (b *Broker) removeClient(clientId string, sessionId string) {
 	b.sessionMtx.Lock()
 	defer b.sessionMtx.Unlock()
 
-	b.sessionMtx.Lock()
-	defer b.sessionMtx.Unlock()
+	b.mdMtx.Lock()
+	defer b.mdMtx.Unlock()
 
 	sessions, ok := b.clientSessions[clientId]
 	if !ok {

@@ -2,6 +2,7 @@ package net
 
 import (
 	"github.com/google/uuid"
+	"github.com/sirupsen/logrus"
 	"net/http"
 	"time"
 )
@@ -68,6 +69,7 @@ writeLoop:
 			}
 			_, err := c.responseWriter.Write(msg)
 			if err != nil {
+				logrus.Errorf("unable to write to client %v: %v", c.id, err.Error())
 				break writeLoop
 			}
 			c.flusher.Flush()
