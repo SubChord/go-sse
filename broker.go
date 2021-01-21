@@ -1,53 +1,64 @@
 package net
 
 import (
+	"errors"
+	"github.com/sirupsen/logrus"
 	"net/http"
 	"sync"
 	"time"
 )
 
-type Broker struct {
-	sessionMtx sync.Mutex
-	mdMtx      sync.Mutex
+var ErrUnknownClient = errors.New("client not found")
 
-	clientSessions map[string]map[string]*ClientConnection
-	clientMetadata map[string]ClientMetadata
-	customHeaders  map[string]string
+type Broker struct {
+	clientsLock sync.Mutex
+
+	clients       map[string]*Client
+	customHeaders map[string]string
 
 	disconnectCallback func(clientId string, sessionId string)
 }
 
+type Client struct {
+	metadata ClientMetadata
+	sessions map[string]*Session
+}
+
+type ClientMetadata map[string]interface{}
+
 func NewBroker(customHeaders map[string]string) *Broker {
 	return &Broker{
-		clientSessions: make(map[string]map[string]*ClientConnection),
-		clientMetadata: map[string]ClientMetadata{},
-		customHeaders:  customHeaders,
+		clients:       make(map[string]*Client),
+		customHeaders: customHeaders,
 	}
 }
 
-func (b *Broker) Connect(clientId string, w http.ResponseWriter, r *http.Request) (*ClientConnection, error) {
+func (b *Broker) Connect(clientId string, w http.ResponseWriter, r *http.Request) (*Session, error) {
 	return b.ConnectWithHeartBeatInterval(clientId, w, r, 15*time.Second)
 }
 
-func (b *Broker) ConnectWithHeartBeatInterval(clientId string, w http.ResponseWriter, r *http.Request, interval time.Duration) (*ClientConnection, error) {
-	client, err := newClientConnection(clientId, w, r)
+func (b *Broker) ConnectWithHeartBeatInterval(clientId string, w http.ResponseWriter, r *http.Request, interval time.Duration) (*Session, error) {
+	session, err := newSession(w, r)
 	if err != nil {
-		http.Error(w, "Streaming unsupported!", http.StatusInternalServerError)
-		return nil, NewStreamingUnsupportedError(err.Error())
+		return nil, err
+	}
+
+	session.onClose = func() {
+		b.removeClient(clientId, session.id)
 	}
 
 	b.setHeaders(w)
 
-	b.addClient(clientId, client)
+	b.addSession(clientId, session)
 
-	go client.serve(
-		interval,
-		func() {
-			b.removeClient(clientId, client.sessionId) //onClose callback
-		},
-	)
+	go func() {
+		err := session.serve(interval)
+		if err != nil {
+			logrus.Debug(err)
+		}
+	}()
 
-	return client, nil
+	return session, nil
 }
 
 func (b *Broker) setHeaders(w http.ResponseWriter) {
@@ -62,74 +73,67 @@ func (b *Broker) setHeaders(w http.ResponseWriter) {
 }
 
 func (b *Broker) IsClientPresent(clientId string) bool {
-	b.sessionMtx.Lock()
-	defer b.sessionMtx.Unlock()
-	_, ok := b.clientSessions[clientId]
+	b.clientsLock.Lock()
+	defer b.clientsLock.Unlock()
+
+	_, ok := b.clients[clientId]
 	return ok
 }
 
 func (b *Broker) SetClientMetadata(clientId string, metadata map[string]interface{}) error {
-	b.mdMtx.Lock()
-	defer b.mdMtx.Unlock()
+	b.clientsLock.Lock()
+	defer b.clientsLock.Unlock()
 
-	b.sessionMtx.Lock()
-	defer b.sessionMtx.Unlock()
-
-	_, ok := b.clientSessions[clientId]
+	_, ok := b.clients[clientId]
 	if !ok {
-		return NewUnknownClientError(clientId)
+		return ErrUnknownClient
 	}
 
-	b.clientMetadata[clientId] = metadata
+	b.clients[clientId].metadata = metadata
 
 	return nil
 }
 
 func (b *Broker) GetClientMetadata(clientId string) (map[string]interface{}, error) {
-	b.mdMtx.Lock()
-	defer b.mdMtx.Unlock()
+	b.clientsLock.Lock()
+	defer b.clientsLock.Unlock()
 
-	b.sessionMtx.Lock()
-	defer b.sessionMtx.Unlock()
-
-	_, ok := b.clientSessions[clientId]
-	md, ok2 := b.clientMetadata[clientId]
-	if !ok || !ok2 {
-		return nil, NewUnknownClientError(clientId)
+	client, ok := b.clients[clientId]
+	if !ok {
+		return nil, ErrUnknownClient
 	}
 
-	return md, nil
+	return client.metadata, nil
 }
 
-func (b *Broker) addClient(clientId string, client *ClientConnection) {
-	b.sessionMtx.Lock()
-	defer b.sessionMtx.Unlock()
+func (b *Broker) addSession(clientId string, session *Session) {
+	b.clientsLock.Lock()
+	defer b.clientsLock.Unlock()
 
-	_, ok := b.clientSessions[clientId]
+	_, ok := b.clients[clientId]
 	if !ok {
-		b.clientSessions[clientId] = make(map[string]*ClientConnection)
+		b.clients[clientId] = &Client{
+			sessions: make(map[string]*Session),
+			metadata: ClientMetadata{},
+		}
 	}
 
-	b.clientSessions[clientId][client.sessionId] = client
+	b.clients[clientId].sessions[session.id] = session
 }
 
 func (b *Broker) removeClient(clientId string, sessionId string) {
-	b.sessionMtx.Lock()
-	defer b.sessionMtx.Unlock()
+	b.clientsLock.Lock()
+	defer b.clientsLock.Unlock()
 
-	b.sessionMtx.Lock()
-	defer b.sessionMtx.Unlock()
-
-	sessions, ok := b.clientSessions[clientId]
+	clients, ok := b.clients[clientId]
 	if !ok {
 		return
 	}
 
-	delete(sessions, sessionId)
+	delete(clients.sessions, sessionId)
 
-	if len(b.clientSessions[clientId]) == 0 {
-		delete(b.clientSessions, clientId)
-		delete(b.clientMetadata, clientId)
+	if len(b.clients[clientId].sessions) == 0 {
+		delete(b.clients, clientId)
 	}
 
 	if b.disconnectCallback != nil {
@@ -138,25 +142,29 @@ func (b *Broker) removeClient(clientId string, sessionId string) {
 }
 
 func (b *Broker) Broadcast(event Event) {
-	b.sessionMtx.Lock()
-	defer b.sessionMtx.Unlock()
-	for _, sessions := range b.clientSessions {
-		for _, c := range sessions {
-			c.Send(event)
+	b.clientsLock.Lock()
+	defer b.clientsLock.Unlock()
+
+	for _, client := range b.clients {
+		for _, session := range client.sessions {
+			session.Send(event)
 		}
 	}
 }
 
 func (b *Broker) Send(clientId string, event Event) error {
-	b.sessionMtx.Lock()
-	defer b.sessionMtx.Unlock()
-	sessions, ok := b.clientSessions[clientId]
+	b.clientsLock.Lock()
+	defer b.clientsLock.Unlock()
+
+	client, ok := b.clients[clientId]
 	if !ok {
-		return NewUnknownClientError(clientId)
+		return ErrUnknownClient
 	}
-	for _, c := range sessions {
+
+	for _, c := range client.sessions {
 		c.Send(event)
 	}
+
 	return nil
 }
 
@@ -165,18 +173,15 @@ func (b *Broker) SetDisconnectCallback(cb func(clientId string, sessionId string
 }
 
 func (b *Broker) Close() error {
-	b.sessionMtx.Lock()
-	defer b.sessionMtx.Unlock()
+	b.clientsLock.Lock()
+	defer b.clientsLock.Unlock()
 
-	for _, v := range b.clientSessions {
+	for _, client := range b.clients {
 		// Mark all client sessions as done
-		for _, session := range v {
-			session.doneChan <- true
+		for _, session := range client.sessions {
+			session.Close()
 		}
 	}
-
-	// Clear client sessions
-	b.clientSessions = map[string]map[string]*ClientConnection{}
 
 	return nil
 }
