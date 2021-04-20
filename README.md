@@ -58,7 +58,7 @@ if err != nil {
 	return
 }
 ```
-2. Subscribe to a specific type of event.
+2. Subscribe to a specific type of event. (passing "" instead of "message" will consume all topics)
 ```Go
 sub, err := feed.Subscribe("message")
 if err != nil {

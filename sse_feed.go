@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	neturl "net/url"
+	"regexp"
 	"strings"
 	"sync"
 )
@@ -147,31 +148,32 @@ func (s *SSEFeed) processRaw(b []byte) {
 		}
 		s.unfinishedEvent = nil
 		for _, subscription := range s.subscriptions {
-			if subscription.eventType == evt.Event {
+            // passing "" gets all eventTypes
+			if  subscription.eventType == "" || subscription.eventType == evt.Event {
 				subscription.feed <- evt
 			}
 		}
 	}
 
-	payload := strings.TrimRight(string(b), "\n")
-	split := strings.Split(payload, ":")
-	// received comment
-	if split[0] == "" {
-		return
-	}
+    split := strings.Split(string(b), "\n")
+    var isEvent  = regexp.MustCompile(`^event:\s?`)
+    var isId  = regexp.MustCompile(`^id:\s?`)
+    var isData  = regexp.MustCompile(`^data:\s?`)
 
-	if s.unfinishedEvent == nil {
+    if s.unfinishedEvent == nil {
 		s.unfinishedEvent = &StringEvent{}
 	}
-
-	switch split[0] {
-	case "id":
-		s.unfinishedEvent.Id = strings.Trim(split[1], " ")
-	case "event":
-		s.unfinishedEvent.Event = strings.Trim(split[1], " ")
-	case "data":
-		s.unfinishedEvent.Data = strings.Trim(split[1], " ")
-	}
+    for _, str := range split {
+        switch {
+        case isEvent.MatchString(str):
+            s.unfinishedEvent.Event = isEvent.ReplaceAllString(str,"") 
+        case isId.MatchString(str):
+            s.unfinishedEvent.Id = isId.ReplaceAllString(str,"")
+        case isData.MatchString(str):
+            s.unfinishedEvent.Data =  s.unfinishedEvent.Data + isData.ReplaceAllString(str,"\n")
+        }
+    }
+    s.unfinishedEvent.Data = strings.TrimLeft(s.unfinishedEvent.Data,"\n")
 }
 
 func (s *SSEFeed) error(err error) {
