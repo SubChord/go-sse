@@ -147,7 +147,7 @@ func (s *SSEFeed) processRaw(b []byte) {
 		}
 		s.unfinishedEvent = nil
 		for _, subscription := range s.subscriptions {
-			if subscription.eventType == evt.Event {
+			if subscription.eventType == "" || subscription.eventType == evt.Event {
 				subscription.feed <- evt
 			}
 		}
