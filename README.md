@@ -60,7 +60,7 @@ if err != nil {
 ```
 2. Subscribe to a specific type of event.
 ```Go
-sub, err := feed.Subscribe("message")
+sub, err := feed.Subscribe("message") // or leave empty to receive all event types
 if err != nil {
 	return
 }
