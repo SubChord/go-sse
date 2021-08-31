@@ -154,8 +154,9 @@ func (s *SSEFeed) processRaw(b []byte) {
 	}
 
 	payload := strings.TrimRight(string(b), "\n")
-	split := strings.Split(payload, ":")
-	// received comment
+	split := strings.SplitN(payload, ":", 1)
+
+	// received comment or heartbeat
 	if split[0] == "" {
 		return
 	}
