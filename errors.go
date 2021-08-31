@@ -6,7 +6,6 @@ type SSEError struct {
 	Message string
 }
 
-// StreamingUnsupportedError
 type StreamingUnsupportedError struct {
 	SSEError
 }
@@ -19,7 +18,6 @@ func (s StreamingUnsupportedError) Error() string {
 	return s.Message
 }
 
-// UnknownClientError
 type UnknownClientError struct {
 	SSEError
 }
