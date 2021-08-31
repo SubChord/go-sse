@@ -147,15 +147,16 @@ func (s *SSEFeed) processRaw(b []byte) {
 		}
 		s.unfinishedEvent = nil
 		for _, subscription := range s.subscriptions {
-			if subscription.eventType == evt.Event {
+			if subscription.eventType == "" || subscription.eventType == evt.Event {
 				subscription.feed <- evt
 			}
 		}
 	}
 
 	payload := strings.TrimRight(string(b), "\n")
-	split := strings.Split(payload, ":")
-	// received comment
+	split := strings.SplitN(payload, ":", 1)
+
+	// received comment or heartbeat
 	if split[0] == "" {
 		return
 	}

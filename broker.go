@@ -7,8 +7,7 @@ import (
 )
 
 type Broker struct {
-	sessionMtx sync.Mutex
-	mdMtx      sync.Mutex
+	mtx      sync.Mutex
 
 	clientSessions map[string]map[string]*ClientConnection
 	clientMetadata map[string]ClientMetadata
@@ -62,18 +61,15 @@ func (b *Broker) setHeaders(w http.ResponseWriter) {
 }
 
 func (b *Broker) IsClientPresent(clientId string) bool {
-	b.sessionMtx.Lock()
-	defer b.sessionMtx.Unlock()
+	b.mtx.Lock()
+	defer b.mtx.Unlock()
 	_, ok := b.clientSessions[clientId]
 	return ok
 }
 
 func (b *Broker) SetClientMetadata(clientId string, metadata map[string]interface{}) error {
-	b.sessionMtx.Lock()
-	defer b.sessionMtx.Unlock()
-
-	b.mdMtx.Lock()
-	defer b.mdMtx.Unlock()
+	b.mtx.Lock()
+	defer b.mtx.Unlock()
 
 	_, ok := b.clientSessions[clientId]
 	if !ok {
@@ -86,11 +82,8 @@ func (b *Broker) SetClientMetadata(clientId string, metadata map[string]interfac
 }
 
 func (b *Broker) GetClientMetadata(clientId string) (map[string]interface{}, error) {
-	b.sessionMtx.Lock()
-	defer b.sessionMtx.Unlock()
-
-	b.mdMtx.Lock()
-	defer b.mdMtx.Unlock()
+	b.mtx.Lock()
+	defer b.mtx.Unlock()
 
 	_, ok := b.clientSessions[clientId]
 	md, ok2 := b.clientMetadata[clientId]
@@ -101,24 +94,21 @@ func (b *Broker) GetClientMetadata(clientId string) (map[string]interface{}, err
 	return md, nil
 }
 
-func (b *Broker) addClient(clientId string, client *ClientConnection) {
-	b.sessionMtx.Lock()
-	defer b.sessionMtx.Unlock()
+func (b *Broker) addClient(clientId string, connection *ClientConnection) {
+	b.mtx.Lock()
+	defer b.mtx.Unlock()
 
 	_, ok := b.clientSessions[clientId]
 	if !ok {
 		b.clientSessions[clientId] = make(map[string]*ClientConnection)
 	}
 
-	b.clientSessions[clientId][client.sessionId] = client
+	b.clientSessions[clientId][connection.sessionId] = connection
 }
 
 func (b *Broker) removeClient(clientId string, sessionId string) {
-	b.sessionMtx.Lock()
-	defer b.sessionMtx.Unlock()
-
-	b.mdMtx.Lock()
-	defer b.mdMtx.Unlock()
+	b.mtx.Lock()
+	defer b.mtx.Unlock()
 
 	sessions, ok := b.clientSessions[clientId]
 	if !ok {
@@ -138,8 +128,8 @@ func (b *Broker) removeClient(clientId string, sessionId string) {
 }
 
 func (b *Broker) Broadcast(event Event) {
-	b.sessionMtx.Lock()
-	defer b.sessionMtx.Unlock()
+	b.mtx.Lock()
+	defer b.mtx.Unlock()
 	for _, sessions := range b.clientSessions {
 		for _, c := range sessions {
 			c.Send(event)
@@ -148,8 +138,8 @@ func (b *Broker) Broadcast(event Event) {
 }
 
 func (b *Broker) Send(clientId string, event Event) error {
-	b.sessionMtx.Lock()
-	defer b.sessionMtx.Unlock()
+	b.mtx.Lock()
+	defer b.mtx.Unlock()
 	sessions, ok := b.clientSessions[clientId]
 	if !ok {
 		return NewUnknownClientError(clientId)
@@ -165,8 +155,8 @@ func (b *Broker) SetDisconnectCallback(cb func(clientId string, sessionId string
 }
 
 func (b *Broker) Close() error {
-	b.sessionMtx.Lock()
-	defer b.sessionMtx.Unlock()
+	b.mtx.Lock()
+	defer b.mtx.Unlock()
 
 	for _, v := range b.clientSessions {
 		// Mark all client sessions as done
