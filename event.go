@@ -97,10 +97,22 @@ func (j *JsonEvent) GetData() string {
 }
 
 func (j *JsonEvent) Prepare() []byte {
+	var data bytes.Buffer
+
+	if len(j.Id) > 0 {
+		data.WriteString(fmt.Sprintf("id: %s\n", strings.Replace(j.Id, "\n", "", -1)))
+	}
+
+	data.WriteString(fmt.Sprintf("event: %s\n", strings.Replace(j.Event, "\n", "", -1)))
+
 	marshal, err := json.Marshal(j.Data)
 	if err != nil {
 		logrus.Errorf("error marshaling JSONEvent: %v", err)
 		return []byte{}
 	}
-	return marshal
+
+	data.WriteString(fmt.Sprintf("data: %s\n", string(marshal)))
+	data.WriteString("\n")
+
+	return data.Bytes()
 }
