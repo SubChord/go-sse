@@ -79,6 +79,10 @@ func ConnectWithSSEFeed(url string, headers map[string][]string) (*SSEFeed, erro
 				break loop
 			default:
 				b, err := reader.ReadBytes('\n')
+				if len(b) == 0 {
+					continue
+				}
+
 				if err != nil && err != io.EOF {
 					feed.error(err)
 					return
