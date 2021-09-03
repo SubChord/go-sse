@@ -79,6 +79,10 @@ func ConnectWithSSEFeed(url string, headers map[string][]string) (*SSEFeed, erro
 				break loop
 			default:
 				b, err := reader.ReadBytes('\n')
+				if len(b) == 0 {
+					continue
+				}
+
 				if err != nil && err != io.EOF {
 					feed.error(err)
 					return
@@ -154,7 +158,7 @@ func (s *SSEFeed) processRaw(b []byte) {
 	}
 
 	payload := strings.TrimRight(string(b), "\n")
-	split := strings.SplitN(payload, ":", 1)
+	split := strings.SplitN(payload, ":", 2)
 
 	// received comment or heartbeat
 	if split[0] == "" {

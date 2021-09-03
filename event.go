@@ -2,7 +2,9 @@ package net
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
+	"github.com/sirupsen/logrus"
 	"strings"
 )
 
@@ -68,5 +70,49 @@ func (h HeartbeatEvent) Prepare() []byte {
 	var data bytes.Buffer
 	data.WriteString(fmt.Sprint(": heartbeat\n"))
 	data.WriteString("\n")
+	return data.Bytes()
+}
+
+type JsonEvent struct {
+	Id    string
+	Event string
+	Data  interface{}
+}
+
+func (j *JsonEvent) GetId() string {
+	return j.Id
+}
+
+func (j *JsonEvent) GetEvent() string {
+	return j.Event
+}
+
+func (j *JsonEvent) GetData() string {
+	marshal, err := json.Marshal(j.Data)
+	if err != nil {
+		logrus.Errorf("error marshaling JSONEvent: %v", err)
+		return ""
+	}
+	return string(marshal)
+}
+
+func (j *JsonEvent) Prepare() []byte {
+	var data bytes.Buffer
+
+	if len(j.Id) > 0 {
+		data.WriteString(fmt.Sprintf("id: %s\n", strings.Replace(j.Id, "\n", "", -1)))
+	}
+
+	data.WriteString(fmt.Sprintf("event: %s\n", strings.Replace(j.Event, "\n", "", -1)))
+
+	marshal, err := json.Marshal(j.Data)
+	if err != nil {
+		logrus.Errorf("error marshaling JSONEvent: %v", err)
+		return []byte{}
+	}
+
+	data.WriteString(fmt.Sprintf("data: %s\n", string(marshal)))
+	data.WriteString("\n")
+
 	return data.Bytes()
 }
