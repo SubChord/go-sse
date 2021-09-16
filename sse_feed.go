@@ -63,6 +63,10 @@ func ConnectWithSSEFeed(url string, headers map[string][]string) (*SSEFeed, erro
 		return nil, err
 	}
 
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("expected status code %d, got %d", http.StatusOK, resp.StatusCode)
+	}
+
 	reader := bufio.NewReader(resp.Body)
 
 	feed := &SSEFeed{
