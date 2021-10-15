@@ -3,12 +3,13 @@ package net
 import (
 	"bufio"
 	"fmt"
-	"github.com/google/uuid"
 	"io"
 	"net/http"
 	neturl "net/url"
 	"strings"
 	"sync"
+
+	"github.com/google/uuid"
 )
 
 type Subscription struct {
@@ -79,14 +80,15 @@ func ConnectWithSSEFeed(url string, headers map[string][]string) (*SSEFeed, erro
 				break loop
 			default:
 				b, err := reader.ReadBytes('\n')
-				if len(b) == 0 {
-					continue
-				}
-
 				if err != nil && err != io.EOF {
 					feed.error(err)
 					return
 				}
+
+				if len(b) == 0 {
+					continue
+				}
+
 				feed.processRaw(b)
 			}
 		}
@@ -96,6 +98,10 @@ func ConnectWithSSEFeed(url string, headers map[string][]string) (*SSEFeed, erro
 }
 
 func (s *SSEFeed) Close() {
+	if s.closed {
+		return
+	}
+
 	close(s.stopChan)
 	for subId, _ := range s.subscriptions {
 		s.closeSubscription(subId)
