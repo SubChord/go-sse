@@ -60,6 +60,7 @@ writeLoop:
 	for {
 		select {
 		case <-c.request.Context().Done():
+			close(c.msg)
 			break writeLoop
 		case <-heartBeat.C:
 			go c.Send(HeartbeatEvent{})
