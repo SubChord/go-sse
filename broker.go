@@ -1,4 +1,4 @@
-package net
+package sse
 
 import (
 	"net/http"
@@ -7,7 +7,7 @@ import (
 )
 
 type Broker struct {
-	mtx      sync.Mutex
+	mtx sync.Mutex
 
 	clientSessions map[string]map[string]*ClientConnection
 	clientMetadata map[string]ClientMetadata

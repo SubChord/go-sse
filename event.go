@@ -1,10 +1,9 @@
-package net
+package sse
 
 import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/sirupsen/logrus"
 	"strings"
 )
 
@@ -90,7 +89,7 @@ func (j *JsonEvent) GetEvent() string {
 func (j *JsonEvent) GetData() string {
 	marshal, err := json.Marshal(j.Data)
 	if err != nil {
-		logrus.Errorf("error marshaling JSONEvent: %v", err)
+		logger.Errorf("error marshaling JSONEvent: %v", err)
 		return ""
 	}
 	return string(marshal)
@@ -107,7 +106,7 @@ func (j *JsonEvent) Prepare() []byte {
 
 	marshal, err := json.Marshal(j.Data)
 	if err != nil {
-		logrus.Errorf("error marshaling JSONEvent: %v", err)
+		logger.Errorf("error marshaling JSONEvent: %v", err)
 		return []byte{}
 	}
 
