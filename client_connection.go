@@ -1,58 +1,59 @@
 package sse
 
 import (
-	"github.com/google/uuid"
 	"net/http"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 type ClientMetadata map[string]interface{}
 
-type ClientConnection struct {
-	id        string
-	sessionId string
+type ClientConnection[I comparable] struct {
+	id        I
+	sessionId uuid.UUID
 
 	responseWriter http.ResponseWriter
 	request        *http.Request
 	flusher        http.Flusher
 
 	msg      chan []byte
-	doneChan chan interface{}
+	doneChan chan struct{}
 }
 
-// Users should not create instances of client. This should be handled by the SSE broker.
-func newClientConnection(id string, w http.ResponseWriter, r *http.Request) (*ClientConnection, error) {
+// newClientConnection is handled by the SSE broker.
+func newClientConnection[idType comparable](id idType, w http.ResponseWriter, r *http.Request) (*ClientConnection[idType], error) {
 	flusher, ok := w.(http.Flusher)
 	if !ok {
 		http.Error(w, "Streaming unsupported!", http.StatusInternalServerError)
 		return nil, NewStreamingUnsupportedError("ResponseWriter(wrapper) does not support http.Flusher")
 	}
 
-	return &ClientConnection{
+	return &ClientConnection[idType]{
 		id:             id,
-		sessionId:      uuid.New().String(),
+		sessionId:      uuid.New(),
 		responseWriter: w,
 		request:        r,
 		flusher:        flusher,
 		msg:            make(chan []byte),
-		doneChan:       make(chan interface{}, 1),
+		doneChan:       make(chan struct{}, 1),
 	}, nil
 }
 
-func (c *ClientConnection) Id() string {
+func (c *ClientConnection[idType]) Id() idType {
 	return c.id
 }
 
-func (c *ClientConnection) SessionId() string {
-	return c.sessionId
+func (c *ClientConnection[idType]) SessionId() string {
+	return c.sessionId.String()
 }
 
-func (c *ClientConnection) Send(event Event) {
+func (c *ClientConnection[idType]) Send(event Event) {
 	bytes := event.Prepare()
 	c.msg <- bytes
 }
 
-func (c *ClientConnection) serve(interval time.Duration, onClose func()) {
+func (c *ClientConnection[idType]) serve(interval time.Duration, onClose func()) {
 	heartBeat := time.NewTicker(interval)
 
 writeLoop:
@@ -76,10 +77,10 @@ writeLoop:
 	}
 
 	heartBeat.Stop()
-	c.doneChan <- true
+	c.doneChan <- struct{}{}
 	onClose()
 }
 
-func (c *ClientConnection) Done() <-chan interface{} {
+func (c *ClientConnection[idType]) Done() <-chan struct{} {
 	return c.doneChan
 }

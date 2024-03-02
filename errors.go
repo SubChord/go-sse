@@ -22,7 +22,7 @@ type UnknownClientError struct {
 	SSEError
 }
 
-func NewUnknownClientError(clientId string) *UnknownClientError {
+func NewUnknownClientError[idType comparable](clientId idType) *UnknownClientError {
 	return &UnknownClientError{SSEError{Message: fmt.Sprintf("clientId: %v", clientId)}}
 }
 
